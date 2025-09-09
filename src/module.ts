@@ -28,14 +28,28 @@ export default defineNuxtModule<ModuleOptions>({
 			...options,
 		})
 
-		if (!config.public.fileStorage.mount) {
+		if (!config.public.fileStorage.mount && !config.public.fileStorage.s3) {
 			logger.error(
-				'Please provide a mount path for the file storage module in your nuxt.config.js',
+				'Please provide either a mount path or S3 configuration for the file storage module in your nuxt.config.js',
 			)
 		} else {
+			const storageType = config.public.fileStorage.s3 ? 'S3' : 'local'
 			logger.ready(
-				`Nuxt File Storage has mounted successfully`,
+				`Nuxt File Storage has mounted successfully with ${storageType} storage`,
 			)
+		}
+
+		// Validate S3 configuration if provided
+		if (config.public.fileStorage.s3) {
+			const s3Config = config.public.fileStorage.s3
+			const requiredFields = ['accessKeyId', 'secretAccessKey', 'region', 'bucket']
+			const missingFields = requiredFields.filter(field => !s3Config[field])
+			
+			if (missingFields.length > 0) {
+				logger.error(
+					`Missing required S3 configuration fields: ${missingFields.join(', ')}`,
+				)
+			}
 		}
 
 		// if (nuxt.options.dev) {

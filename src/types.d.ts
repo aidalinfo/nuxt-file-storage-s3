@@ -12,7 +12,17 @@ export interface ClientFile extends Blob {
 	lastModified: number
 }
 
+export interface S3Options {
+	accessKeyId: string
+	secretAccessKey: string
+	region: string
+	bucket: string
+	endpoint?: string
+	forcePathStyle?: boolean
+}
+
 export interface ModuleOptions {
 	mount: string
 	version: string
+	s3?: S3Options
 }
