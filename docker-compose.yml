@@ -1,0 +1,29 @@
+services:
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: garage
+    ports:
+      - "3900:3900" # S3 API
+      - "3903:3903" # Admin API
+    volumes:
+      - ./docker/garage.toml:/etc/garage.toml
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+
+  s3ui:
+    image: cloudlena/s3manager:latest
+    container_name: s3ui
+    ports:
+      - "8080:8080"
+    environment:
+      - ENDPOINT=garage:3900
+      - ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - USE_SSL=false
+      - FORCE_PATH_STYLE=true
+    depends_on:
+      - garage
+
+volumes:
+  garage_meta:
+  garage_data:
