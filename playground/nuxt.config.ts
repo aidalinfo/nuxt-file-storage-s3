@@ -2,7 +2,7 @@ export default defineNuxtConfig({
 	modules: ['../src/module'],
 
 	fileStorage: {
-		mount: process.env.mount,
+		mount: process.env.mount || 'uploads',
 		// S3 configuration example (uncomment to use S3)
 		// s3: {
 		// 	accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
