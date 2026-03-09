@@ -14,7 +14,7 @@ export type * from './types'
 
 export default defineNuxtModule<ModuleOptions>({
 	meta: {
-		name: 'nuxt-file-storage',
+		name: '@aidalinfo/nuxt-file-storage-s3',
 		configKey: 'fileStorage',
 	},
 	//? Default configuration options of the Nuxt module
