@@ -49,6 +49,9 @@ jobs:
           fi
 
       - name: Install dependencies
+        run: npm i
+
+      - name: Install dependencies ci
         run: npm ci
 
       - name: Run tests
