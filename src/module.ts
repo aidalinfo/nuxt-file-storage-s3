@@ -42,13 +42,42 @@ export default defineNuxtModule<ModuleOptions>({
 		// Validate S3 configuration if provided
 		if (config.public.fileStorage.s3) {
 			const s3Config = config.public.fileStorage.s3
-			const requiredFields = ['accessKeyId', 'secretAccessKey', 'region', 'bucket']
+			const requiredFields = ['accessKeyId', 'secretAccessKey', 'region']
 			const missingFields = requiredFields.filter(field => !s3Config[field])
-			
+
 			if (missingFields.length > 0) {
 				logger.error(
 					`Missing required S3 configuration fields: ${missingFields.join(', ')}`,
 				)
+			}
+
+			const hasLegacyBucket = !!s3Config.bucket
+			const hasDefaultBucketName = !!s3Config.defaultBucketName
+			const hasBuckets = !!s3Config.buckets && Object.keys(s3Config.buckets).length > 0
+			const hasMultiBucketMode = hasDefaultBucketName || hasBuckets
+
+			if (!hasLegacyBucket && !hasMultiBucketMode) {
+				logger.error(
+					'Invalid S3 bucket configuration: provide legacy s3.bucket or multi-bucket mode (s3.defaultBucketName + s3.buckets)',
+				)
+			}
+
+			if (hasMultiBucketMode) {
+				if (!hasDefaultBucketName || !hasBuckets) {
+					logger.error(
+						'Invalid multi-bucket S3 configuration: both s3.defaultBucketName and a non-empty s3.buckets mapping are required',
+					)
+				} else if (!s3Config.buckets[s3Config.defaultBucketName]?.bucket) {
+					logger.error(
+						`Invalid multi-bucket S3 configuration: defaultBucketName "${s3Config.defaultBucketName}" is missing from s3.buckets`,
+					)
+				} else {
+					logger.info(
+						`S3 multi-bucket mode enabled (default: ${s3Config.defaultBucketName})`,
+					)
+				}
+			} else if (hasLegacyBucket) {
+				logger.info('S3 legacy bucket mode enabled (s3.bucket)')
 			}
 		}
 

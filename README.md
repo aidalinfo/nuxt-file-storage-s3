@@ -39,7 +39,29 @@ fileStorage: {
 }
 ```
 
-### S3 / S3-compatible
+### S3 / S3-compatible (recommended multi-bucket mode)
+
+```ts
+fileStorage: {
+  s3: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    region: process.env.AWS_REGION || 'us-east-1',
+    defaultBucketName: 'private',
+    buckets: {
+      private: { bucket: process.env.AWS_S3_PRIVATE_BUCKET || 'my-private-bucket' },
+      public: { bucket: process.env.AWS_S3_PUBLIC_BUCKET || 'my-public-bucket' },
+    },
+    endpoint: process.env.AWS_ENDPOINT,  // optional, for S3-compatible services
+    forcePathStyle: true,                // required for most S3-compatible services
+  },
+}
+```
+
+Bucket resolution order is: explicit `bucketName` argument -> `defaultBucketName` -> legacy `s3.bucket`.
+`defaultBucketName` is a logical name (`private` / `public`) and is used automatically when you do not pass an explicit `bucketName` to server utils.
+
+Legacy single-bucket mode is still supported:
 
 ```ts
 fileStorage: {
@@ -48,8 +70,6 @@ fileStorage: {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     region: process.env.AWS_REGION || 'us-east-1',
     bucket: process.env.AWS_S3_BUCKET || 'my-bucket',
-    endpoint: process.env.AWS_ENDPOINT,  // optional, for S3-compatible services
-    forcePathStyle: true,                // required for most S3-compatible services
   },
 }
 ```
@@ -116,19 +136,25 @@ export default defineEventHandler(async (event) => {
 
 | Function | Description |
 |---|---|
-| `storeFile(file, name, folder?)` | Store a file. `name` can be a string (fixed name) or number (random ID length). Returns the file key. |
-| `getFile(key, expiresIn?)` | Returns a signed URL (S3) or local path. `expiresIn` defaults to 3600s. |
-| `listFiles(folder?)` | List all files in a folder / S3 prefix. |
-| `removeFile(key)` | Delete a file. |
+| `storeFile(file, name, folder?, bucketName?)` | Store a file. `name` can be a string (fixed name) or number (random ID length). Returns the file key. |
+| `getFile(key, expiresIn?, bucketName?)` | Returns a signed URL (S3) or local path. `expiresIn` defaults to 3600s. |
+| `listFiles(folder?, bucketName?)` | List all files in a folder / S3 prefix. |
+| `removeFile(key, bucketName?)` | Delete a file. |
+
+Example with explicit logical bucket:
+
+```ts
+await storeFile(file, 12, 'avatars', 'public')
+```
 
 #### S3-specific functions
 
 ```ts
-storeFileToS3(file, name, folder?)     // → key
-getFileFromS3(key, expiresIn?)         // → signed URL
-getFileStreamFromS3(key)               // → ReadableStream
-listFilesFromS3(prefix?, maxKeys?)     // → string[]
-deleteFileFromS3(key)
+storeFileToS3(file, name, folder?, bucketName?)     // → key
+getFileFromS3(key, expiresIn?, bucketName?)         // → signed URL
+getFileStreamFromS3(key, bucketName?)               // → ReadableStream
+listFilesFromS3(prefix?, maxKeys?, bucketName?)     // → string[]
+deleteFileFromS3(key, bucketName?)
 ```
 
 #### Local-specific functions
@@ -159,7 +185,10 @@ The init script creates a bucket and an access key, and prints the credentials t
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=garage
-AWS_S3_BUCKET=my-bucket
+AWS_S3_PRIVATE_BUCKET=my-private-bucket
+AWS_S3_PUBLIC_BUCKET=my-public-bucket
+# Legacy mode:
+# AWS_S3_BUCKET=my-bucket
 AWS_ENDPOINT=http://localhost:3900
 ```
 

@@ -18,9 +18,10 @@ export const storeFile = async (
 	file: ServerFile,
 	fileNameOrIdLength: string | number,
 	filelocation: string = '',
+	bucketName?: string,
 ): Promise<string> => {
 	if (isS3Configured()) {
-		return storeFileToS3(file, fileNameOrIdLength, filelocation)
+		return storeFileToS3(file, fileNameOrIdLength, filelocation, bucketName)
 	}
 	return storeFileLocally(file, fileNameOrIdLength, filelocation)
 }
@@ -31,9 +32,13 @@ export const storeFile = async (
  * @param expiresIn S3 only — signed URL expiration in seconds (default: 3600)
  * @returns signed URL (S3) or local file path
  */
-export const getFile = async (fileKey: string, expiresIn: number = 3600): Promise<string> => {
+export const getFile = async (
+	fileKey: string,
+	expiresIn: number = 3600,
+	bucketName?: string,
+): Promise<string> => {
 	if (isS3Configured()) {
-		return getFileFromS3(fileKey, expiresIn)
+		return getFileFromS3(fileKey, expiresIn, bucketName)
 	}
 	return getFileLocally(fileKey)
 }
@@ -43,9 +48,9 @@ export const getFile = async (fileKey: string, expiresIn: number = 3600): Promis
  * @param filelocation folder path
  * @returns array of file keys or filenames
  */
-export const listFiles = async (filelocation: string = ''): Promise<string[]> => {
+export const listFiles = async (filelocation: string = '', bucketName?: string): Promise<string[]> => {
 	if (isS3Configured()) {
-		return listFilesFromS3(filelocation)
+		return listFilesFromS3(filelocation, 1000, bucketName)
 	}
 	return getFilesLocally(filelocation)
 }
@@ -54,9 +59,9 @@ export const listFiles = async (filelocation: string = ''): Promise<string[]> =>
  * @description Delete a file using either S3 or local storage depending on configuration.
  * @param fileKey the file key or filename (return value of storeFile)
  */
-export const removeFile = async (fileKey: string): Promise<void> => {
+export const removeFile = async (fileKey: string, bucketName?: string): Promise<void> => {
 	if (isS3Configured()) {
-		return deleteFileFromS3(fileKey)
+		return deleteFileFromS3(fileKey, bucketName)
 	}
 	// For local storage, split the key into folder and filename
 	const lastSlash = fileKey.lastIndexOf('/')

@@ -16,7 +16,9 @@ export interface S3Options {
 	accessKeyId: string
 	secretAccessKey: string
 	region: string
-	bucket: string
+	bucket?: string
+	defaultBucketName?: string
+	buckets?: Record<string, { bucket: string }>
 	endpoint?: string
 	forcePathStyle?: boolean
 }

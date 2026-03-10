@@ -3,12 +3,18 @@ export default defineNuxtConfig({
 
 	fileStorage: {
 		// mount: process.env.mount || 'uploads',
-		// S3 configuration example (uncomment to use S3)
-		s3: {                                                                                                                                                                                                                                                                   
+		// S3 configuration example (recommended multi-bucket mode)
+		s3: {
 			accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
 			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
 			region: process.env.AWS_REGION || 'garage',
-			bucket: process.env.AWS_S3_BUCKET || 'my-bucket',
+			defaultBucketName: 'private',
+			buckets: {
+				private: { bucket: process.env.AWS_S3_PRIVATE_BUCKET || 'my-private-bucket' },
+				public: { bucket: process.env.AWS_S3_PUBLIC_BUCKET || 'my-public-bucket' },
+			},
+			// Legacy mode remains supported:
+			// bucket: process.env.AWS_S3_BUCKET || 'my-bucket',
 			endpoint: process.env.AWS_ENDPOINT,
 			forcePathStyle: true,
 		},

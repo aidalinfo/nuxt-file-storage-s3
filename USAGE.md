@@ -27,6 +27,30 @@ fileStorage: {
 
 ### S3 / S3-compatible (Garage, MinIO, DigitalOcean Spaces…)
 
+Recommended multi-bucket configuration:
+
+```ts
+fileStorage: {
+  s3: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    region: process.env.AWS_REGION || 'us-east-1',
+    defaultBucketName: 'private',
+    buckets: {
+      private: { bucket: process.env.AWS_S3_PRIVATE_BUCKET || 'my-private-bucket' },
+      public: { bucket: process.env.AWS_S3_PUBLIC_BUCKET || 'my-public-bucket' },
+    },
+    endpoint: process.env.AWS_ENDPOINT,   // optional, for S3-compatible services
+    forcePathStyle: true,                 // required for most S3-compatible services
+  },
+}
+```
+
+Bucket resolution order is: explicit `bucketName` argument -> `defaultBucketName` -> legacy `s3.bucket`.
+By default, server utilities use `defaultBucketName` when no explicit `bucketName` is passed.
+
+Legacy single-bucket mode is still supported:
+
 ```ts
 fileStorage: {
   s3: {
@@ -34,8 +58,6 @@ fileStorage: {
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     region: process.env.AWS_REGION || 'us-east-1',
     bucket: process.env.AWS_S3_BUCKET || 'my-bucket',
-    endpoint: process.env.AWS_ENDPOINT,   // optional, for S3-compatible services
-    forcePathStyle: true,                 // required for most S3-compatible services
   },
 }
 ```
@@ -90,7 +112,7 @@ All functions are auto-imported in server routes.
 
 These functions automatically use S3 or local storage based on your configuration.
 
-#### `storeFile(file, fileNameOrIdLength, folder?)`
+#### `storeFile(file, fileNameOrIdLength, folder?, bucketName?)`
 
 ```ts
 // Generate a random 12-char filename, store in 'avatars/' prefix
@@ -98,6 +120,9 @@ const key = await storeFile(file, 12, 'avatars')
 
 // Use a fixed filename
 const key = await storeFile(file, 'profile', 'avatars')
+
+// Store explicitly in logical "public" bucket
+const key = await storeFile(file, 12, 'avatars', 'public')
 ```
 
 | Param | Type | Description |
@@ -105,10 +130,11 @@ const key = await storeFile(file, 'profile', 'avatars')
 | `file` | `ServerFile` | File object from `readBody` |
 | `fileNameOrIdLength` | `string \| number` | Fixed name or random ID length |
 | `folder` | `string` | Subfolder / S3 prefix (optional) |
+| `bucketName` | `string` | Optional logical bucket name (`public`, `private`, ...) |
 
 Returns the file key (use it to retrieve or delete the file later).
 
-#### `getFile(key, expiresIn?)`
+#### `getFile(key, expiresIn?, bucketName?)`
 
 ```ts
 const url = await getFile('avatars/AbCdEf123456.png')
@@ -121,16 +147,20 @@ const url = await getFile('avatars/AbCdEf123456.png')
 | `key` | `string` | | File key returned by `storeFile` |
 | `expiresIn` | `number` | `3600` | S3 only — signed URL TTL in seconds |
 
-#### `listFiles(folder?)`
+#### `listFiles(folder?, bucketName?)`
 
 ```ts
 const keys = await listFiles('avatars')
+
+const publicKeys = await listFiles('avatars', 'public')
 ```
 
-#### `removeFile(key)`
+#### `removeFile(key, bucketName?)`
 
 ```ts
 await removeFile('avatars/AbCdEf123456.png')
+
+await removeFile('avatars/AbCdEf123456.png', 'public')
 ```
 
 ---
@@ -138,11 +168,11 @@ await removeFile('avatars/AbCdEf123456.png')
 ### S3-specific
 
 ```ts
-storeFileToS3(file, fileNameOrIdLength, folder?)   // → key
-getFileFromS3(key, expiresIn?)                     // → signed URL
-getFileStreamFromS3(key)                           // → ReadableStream
-listFilesFromS3(prefix?, maxKeys?)                 // → string[]
-deleteFileFromS3(key)
+storeFileToS3(file, fileNameOrIdLength, folder?, bucketName?)   // → key
+getFileFromS3(key, expiresIn?, bucketName?)                     // → signed URL
+getFileStreamFromS3(key, bucketName?)                           // → ReadableStream
+listFilesFromS3(prefix?, maxKeys?, bucketName?)                 // → string[]
+deleteFileFromS3(key, bucketName?)
 ```
 
 ### Local-specific

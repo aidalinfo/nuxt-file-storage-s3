@@ -6,16 +6,61 @@ import { parseDataUrl } from './storage'
 
 let s3Client: S3Client | null = null
 
+const getS3Config = (): S3Options => {
+	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options | undefined
+
+	if (!config) {
+		throw new Error('S3 configuration not found. Please configure S3 options in your nuxt.config.ts')
+	}
+
+	if (!config.accessKeyId || !config.secretAccessKey || !config.region) {
+		throw new Error('Invalid S3 configuration. accessKeyId, secretAccessKey and region are required')
+	}
+
+	return config
+}
+
+const resolveS3Bucket = (config: S3Options, bucketName?: string): string => {
+	const buckets = config.buckets
+	const hasBuckets = !!buckets && Object.keys(buckets).length > 0
+
+	if (bucketName) {
+		if (hasBuckets) {
+			const bucketConfig = buckets?.[bucketName]
+			if (!bucketConfig?.bucket) {
+				throw new Error(`Unknown S3 logical bucket name: "${bucketName}"`)
+			}
+			return bucketConfig.bucket
+		}
+		return bucketName
+	}
+
+	if (config.defaultBucketName) {
+		if (!hasBuckets) {
+			throw new Error('Invalid S3 configuration. defaultBucketName requires a non-empty s3.buckets mapping')
+		}
+
+		const defaultBucket = buckets?.[config.defaultBucketName]
+		if (!defaultBucket?.bucket) {
+			throw new Error(`S3 defaultBucketName "${config.defaultBucketName}" is missing from s3.buckets`)
+		}
+
+		return defaultBucket.bucket
+	}
+
+	if (config.bucket) {
+		return config.bucket
+	}
+
+	throw new Error('Invalid S3 configuration. Provide s3.bucket or (s3.defaultBucketName + s3.buckets)')
+}
+
 /**
  * Initialize S3 client with configuration
  */
 const getS3Client = (): S3Client => {
 	if (!s3Client) {
-		const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
-		
-		if (!config) {
-			throw new Error('S3 configuration not found. Please configure S3 options in your nuxt.config.ts')
-		}
+		const config = getS3Config()
 
 		s3Client = new S3Client({
 			credentials: {
@@ -50,9 +95,11 @@ export const storeFileToS3 = async (
 	file: ServerFile,
 	fileNameOrIdLength: string | number,
 	filelocation: string = '',
+	bucketName?: string,
 ): Promise<string> => {
 	const client = getS3Client()
-	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
+	const config = getS3Config()
+	const bucket = resolveS3Bucket(config, bucketName)
 	const { binaryString, ext } = parseDataUrl(file.content)
 
 	const originalExt = file.name.toString().split('.').pop() || ext
@@ -66,7 +113,7 @@ export const storeFileToS3 = async (
 		: filename
 
 	const command = new PutObjectCommand({
-		Bucket: config.bucket,
+		Bucket: bucket,
 		Key: key,
 		Body: binaryString,
 		ContentType: file.type,
@@ -82,12 +129,17 @@ export const storeFileToS3 = async (
  * @param expiresIn expiration time in seconds (default: 3600 = 1 hour)
  * @returns signed URL for the file
  */
-export const getFileFromS3 = async (fileKey: string, expiresIn: number = 3600): Promise<string> => {
+export const getFileFromS3 = async (
+	fileKey: string,
+	expiresIn: number = 3600,
+	bucketName?: string,
+): Promise<string> => {
 	const client = getS3Client()
-	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
+	const config = getS3Config()
+	const bucket = resolveS3Bucket(config, bucketName)
 
 	const command = new GetObjectCommand({
-		Bucket: config.bucket,
+		Bucket: bucket,
 		Key: fileKey,
 	})
 
@@ -99,12 +151,16 @@ export const getFileFromS3 = async (fileKey: string, expiresIn: number = 3600): 
  * @param fileKey the S3 object key
  * @returns ReadableStream of the file
  */
-export const getFileStreamFromS3 = async (fileKey: string): Promise<ReadableStream | undefined> => {
+export const getFileStreamFromS3 = async (
+	fileKey: string,
+	bucketName?: string,
+): Promise<ReadableStream | undefined> => {
 	const client = getS3Client()
-	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
+	const config = getS3Config()
+	const bucket = resolveS3Bucket(config, bucketName)
 
 	const command = new GetObjectCommand({
-		Bucket: config.bucket,
+		Bucket: bucket,
 		Key: fileKey,
 	})
 
@@ -116,12 +172,13 @@ export const getFileStreamFromS3 = async (fileKey: string): Promise<ReadableStre
  * @description Delete a file from S3 bucket
  * @param fileKey the S3 object key to delete
  */
-export const deleteFileFromS3 = async (fileKey: string): Promise<void> => {
+export const deleteFileFromS3 = async (fileKey: string, bucketName?: string): Promise<void> => {
 	const client = getS3Client()
-	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
+	const config = getS3Config()
+	const bucket = resolveS3Bucket(config, bucketName)
 
 	const command = new DeleteObjectCommand({
-		Bucket: config.bucket,
+		Bucket: bucket,
 		Key: fileKey,
 	})
 
@@ -134,15 +191,20 @@ export const deleteFileFromS3 = async (fileKey: string): Promise<void> => {
  * @param maxKeys maximum number of files to return (default: 1000)
  * @returns array of S3 object keys
  */
-export const listFilesFromS3 = async (prefix: string = '', maxKeys: number = 1000): Promise<string[]> => {
+export const listFilesFromS3 = async (
+	prefix: string = '',
+	maxKeys: number = 1000,
+	bucketName?: string,
+): Promise<string[]> => {
 	const client = getS3Client()
-	const config = useRuntimeConfig().public.fileStorage.s3 as S3Options
+	const config = getS3Config()
+	const bucket = resolveS3Bucket(config, bucketName)
 
 	const normalizedPrefix = prefix.replace(/^\//, '').replace(/\/$/, '')
 	const finalPrefix = normalizedPrefix ? `${normalizedPrefix}/` : ''
 
 	const command = new ListObjectsV2Command({
-		Bucket: config.bucket,
+		Bucket: bucket,
 		Prefix: finalPrefix,
 		MaxKeys: maxKeys,
 	})
