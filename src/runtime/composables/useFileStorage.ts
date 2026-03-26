@@ -1,18 +1,35 @@
 import { ref } from 'vue'
-import type { ClientFile } from '../../types'
+import { useRuntimeConfig } from '#imports'
+import type {
+	ClientFile,
+	DeepPartial,
+	FileCompressionOptions,
+	HandleFileInputOptions,
+	UseFileStorageOptions,
+} from '../../types'
+import { compressFile } from './utils/compression'
+import { resolveHandleFileInputOptions } from './utils/options'
 
-type Options = {
-	clearOldFiles: boolean
+const getEventFiles = (event: any): File[] => {
+	const inputFiles = event?.target?.files
+	if (!inputFiles) {
+		return []
+	}
+
+	return Array.from(inputFiles) as File[]
 }
 
-export default function (options: Options = { clearOldFiles: true }) {
+export default function (options: UseFileStorageOptions = { clearOldFiles: true }) {
 	const files = ref<ClientFile[]>([])
-	const serializeFile = (file: ClientFile): Promise<void> => {
+	const runtimeConfig = useRuntimeConfig()
+	const globalCompression = runtimeConfig.public.fileStorage?.compression as DeepPartial<FileCompressionOptions> | undefined
+
+	const serializeFile = (file: File): Promise<void> => {
 		return new Promise<void>((resolve, reject) => {
 			const reader = new FileReader()
 			reader.onload = (e: ProgressEvent<FileReader>) => {
 				files.value.push({
-					...file,
+					...(file as unknown as ClientFile),
 					name: file.name,
 					size: file.size,
 					type: file.type,
@@ -32,15 +49,20 @@ export default function (options: Options = { clearOldFiles: true }) {
 		files.value.splice(0, files.value.length)
 	}
 
+	const handleFileInput = async (event: any, inputOptions?: HandleFileInputOptions) => {
+		const resolvedOptions = resolveHandleFileInputOptions(inputOptions, options, globalCompression)
 
-	const handleFileInput = async (event: any) => {
-		if (options.clearOldFiles) {
+		if (resolvedOptions.clearOldFiles) {
 			clearFiles()
 		}
 
 		const promises = []
-		for (const file of event.target.files) {
-			promises.push(serializeFile(file))
+		for (const file of getEventFiles(event)) {
+			promises.push(
+				compressFile(file, resolvedOptions.compression)
+					.then(processedFile => serializeFile(processedFile))
+					.catch(() => serializeFile(file)),
+			)
 		}
 
 		await Promise.all(promises)

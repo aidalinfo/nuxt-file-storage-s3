@@ -2,6 +2,7 @@ import { useRuntimeConfig } from '#imports'
 import type { ServerFile } from '../../../types'
 import { storeFileLocally, getFileLocally, getFilesLocally, deleteFile as deleteFileLocally } from './storage'
 import { storeFileToS3, getFileFromS3, listFilesFromS3, deleteFileFromS3 } from './s3Storage'
+import { prepareFileForStorage } from './fileCompression'
 
 const isS3Configured = () => {
 	return !!useRuntimeConfig().public.fileStorage.s3
@@ -20,10 +21,12 @@ export const storeFile = async (
 	filelocation: string = '',
 	bucketName?: string,
 ): Promise<string> => {
+	const fileToStore = await prepareFileForStorage(file)
+
 	if (isS3Configured()) {
-		return storeFileToS3(file, fileNameOrIdLength, filelocation, bucketName)
+		return storeFileToS3(fileToStore, fileNameOrIdLength, filelocation, bucketName)
 	}
-	return storeFileLocally(file, fileNameOrIdLength, filelocation)
+	return storeFileLocally(fileToStore, fileNameOrIdLength, filelocation)
 }
 
 /**

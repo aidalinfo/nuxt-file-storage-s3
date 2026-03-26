@@ -3,6 +3,26 @@ export default defineNuxtConfig({
 
 	fileStorage: {
 		// mount: process.env.mount || 'uploads',
+		compression: {
+			client: {
+				enabled: true,
+				image: {
+					enabled: true,
+					quality: 0.8,
+					maxWidth: 1920,
+					maxHeight: 1920,
+				},
+				pdf: {
+					enabled: true,
+				},
+			},
+			server: {
+				enabled: true,
+				pdf: {
+					enabled: true,
+				},
+			},
+		},
 		// S3 configuration example (recommended multi-bucket mode)
 		s3: {
 			accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',

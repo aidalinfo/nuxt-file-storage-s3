@@ -31,10 +31,11 @@
 		"test:watch": "vitest watch"
 	},
 	"dependencies": {
-		"@nuxt/kit": "^4.3.1",
 		"@aws-sdk/client-s3": "^3.884.0",
 		"@aws-sdk/s3-request-presigner": "^3.884.0",
-		"defu": "^6.1.4"
+		"@nuxt/kit": "^4.3.1",
+		"defu": "^6.1.4",
+		"pdf-lib": "^1.17.1"
 	},
 	"devDependencies": {
 		"@nuxt/devtools": "3.2.3",

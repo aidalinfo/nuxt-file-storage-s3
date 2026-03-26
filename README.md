@@ -9,6 +9,8 @@ Easy solution to store files in your Nuxt apps — supports **local storage** an
 ## Features
 
 - 📁 &nbsp;Handle file inputs on the frontend and serialize them for the backend
+- 🗜️ &nbsp;Optional client-side compression before serialization (images, PDF strategy-ready)
+- 🧾 &nbsp;Optional server-side PDF optimization before local/S3 storage (with safe fallback)
 - 🖴 &nbsp;Store files locally via Nitro server engine
 - ☁️ &nbsp;Store files on S3 or any S3-compatible service
 - 🔀 &nbsp;Unified API — same functions work for both local and S3, automatically detected from config
@@ -76,6 +78,66 @@ fileStorage: {
 
 If `s3` is configured, all server utilities will automatically use S3. Otherwise they fall back to local storage.
 
+### Compression (client + server PDF)
+
+The payload contract between frontend and backend stays unchanged (`ServerFile[]`).
+
+- **Client compression** happens before `FileReader.readAsDataURL`.
+- **Server compression** (PDF only) happens right before storage (`storeFile` pipeline), for both local and S3 backends.
+
+```ts
+fileStorage: {
+  compression: {
+    client: {
+      enabled: true,
+      image: {
+        enabled: true,
+        quality: 0.8,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      },
+      pdf: {
+        enabled: true,
+      },
+    },
+    server: {
+      enabled: true,
+      pdf: {
+        enabled: true,
+      },
+    },
+  },
+}
+```
+
+Legacy flat client configuration is still supported:
+
+```ts
+fileStorage: {
+  compression: {
+    enabled: true,
+    image: { enabled: true, quality: 0.8, maxWidth: 1920, maxHeight: 1920 },
+    pdf: { enabled: true },
+  },
+}
+```
+
+Option priority is:
+
+1. `handleFileInput(event, override)`
+2. `useFileStorage(options)`
+3. module global config (`nuxt.config.ts`)
+4. internal defaults
+
+V1 behavior:
+
+- Images are compressed when enabled.
+- PDF can be optimized server-side with `pdf-lib` when `compression.server` is enabled.
+- Non-image / non-PDF files are not processed.
+- Server-side PDF fallback is automatic when optimization fails, output is invalid, or size is not smaller.
+- If client compression fails or is unsupported, upload falls back to original file automatically.
+- No format conversion in V1 (if output MIME differs, original file is used).
+
 ---
 
 ## Usage
@@ -97,6 +159,26 @@ const submit = async () => {
 <template>
   <input type="file" multiple @input="handleFileInput" />
   <button @click="submit">Upload</button>
+</template>
+```
+
+Per-upload override example:
+
+```vue
+<script setup>
+const { handleFileInput } = useFileStorage({
+  compression: { enabled: true },
+})
+
+const onInputNoCompression = (event) => {
+  return handleFileInput(event, {
+    compression: { enabled: false },
+  })
+}
+</script>
+
+<template>
+  <input type="file" @input="onInputNoCompression" />
 </template>
 ```
 

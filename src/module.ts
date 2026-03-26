@@ -10,6 +10,7 @@ import defu from 'defu'
 // import { version } from '../package.json'
 
 import type { ModuleOptions } from './types'
+import { resolveModuleCompressionOptions } from './utils/compressionOptions'
 export type * from './types'
 
 export default defineNuxtModule<ModuleOptions>({
@@ -24,8 +25,20 @@ export default defineNuxtModule<ModuleOptions>({
 	// },
 	setup(options, nuxt) {
 		const config = nuxt.options.runtimeConfig as any
+		const normalizedCompression = resolveModuleCompressionOptions(options.compression)
+		const normalizedOptions = defu(options, {
+			compression: normalizedCompression,
+		})
+
 		config.public.fileStorage = defu(config.public.fileStorage, {
-			...options,
+			...normalizedOptions,
+			compression: normalizedCompression.client,
+		})
+
+		config.fileStorage = defu(config.fileStorage, {
+			compression: {
+				server: normalizedCompression.server,
+			},
 		})
 
 		if (!config.public.fileStorage.mount && !config.public.fileStorage.s3) {

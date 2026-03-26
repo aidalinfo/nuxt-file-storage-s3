@@ -23,8 +23,48 @@ export interface S3Options {
 	forcePathStyle?: boolean
 }
 
+export type DeepPartial<T> = {
+	[K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
+}
+
+export interface FileCompressionOptions {
+	enabled: boolean
+	image: {
+		enabled: boolean
+		quality: number
+		maxWidth: number
+		maxHeight: number
+	}
+	pdf: {
+		enabled: boolean
+	}
+}
+
+export interface ServerFileCompressionOptions {
+	enabled: boolean
+	pdf: {
+		enabled: boolean
+	}
+}
+
+export type ModuleCompressionOptions = DeepPartial<FileCompressionOptions> & {
+	client?: DeepPartial<FileCompressionOptions>
+	server?: DeepPartial<ServerFileCompressionOptions>
+}
+
+export interface UseFileStorageOptions {
+	clearOldFiles?: boolean
+	compression?: DeepPartial<FileCompressionOptions>
+}
+
+export interface HandleFileInputOptions {
+	clearOldFiles?: boolean
+	compression?: DeepPartial<FileCompressionOptions>
+}
+
 export interface ModuleOptions {
 	mount: string
 	version: string
 	s3?: S3Options
+	compression?: ModuleCompressionOptions
 }

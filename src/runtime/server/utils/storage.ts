@@ -2,6 +2,7 @@ import { writeFile, rm, mkdir, readdir } from 'fs/promises'
 import { useRuntimeConfig } from '#imports'
 import type { ServerFile } from '../../../types'
 import { join } from 'path'
+import { parseDataUrl } from './dataUrl'
 
 /**
  * @description Will store the file in the specified directory
@@ -100,30 +101,4 @@ const generateRandomId = (length: number) => {
 		randomId += characters.charAt(Math.floor(Math.random() * characters.length))
 	}
 	return randomId
-}
-
-/**
- * @description Parses a data URL and returns an object with the binary data and the file extension.
- * @param {string} file - The data URL
- * @returns {{binaryString: Buffer, ext: string}} An object with the binary data - file extension
- *
- * @example
- * ```ts
- *   const { binaryString, ext } = parseDataUrl(file.content)
- * ```
- */
-export const parseDataUrl = (file: string):
-	{binaryString: Buffer, ext: string} => {
-	const arr: string[] = file.split(',')
-	const mimeMatch = arr[0].match(/:(.*?);/)
-	if (!mimeMatch) {
-		throw new Error('Invalid data URL')
-	}
-	const mime: string = mimeMatch[1]
-	const base64String: string = arr[1]
-	const binaryString: Buffer = Buffer.from(base64String, 'base64')
-
-	const ext = mime.split('/')[1]
-
-	return { binaryString, ext }
 }

@@ -34,6 +34,12 @@
 						@input="handleFileInput"
 						@click="approveUpload == ''"
 					/>
+					<input
+						type="file"
+						name="files-no-compression[]"
+						multiple
+						@input="handleFileInputWithoutCompression"
+					/>
 				</label>
 				<button @click="submit">submit</button>
 				<p>{{ approveUpload }}</p>
@@ -47,6 +53,14 @@
 
 <script setup lang="ts">
 const { handleFileInput, files } = useFileStorage({ clearOldFiles: true })
+
+const handleFileInputWithoutCompression = (event: Event) => {
+	return handleFileInput(event, {
+		compression: {
+			enabled: false,
+		},
+	})
+}
 
 const fileInput = ref<HTMLInputElement>()
 

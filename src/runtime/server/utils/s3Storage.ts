@@ -2,7 +2,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, List
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { useRuntimeConfig } from '#imports'
 import type { ServerFile, S3Options } from '../../../types'
-import { parseDataUrl } from './storage'
+import { parseDataUrl } from './dataUrl'
 
 let s3Client: S3Client | null = null
 
